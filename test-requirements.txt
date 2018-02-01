@@ -11,3 +11,5 @@ coverage
 # Only really needed on older versions of python
 contextlib2
 setuptools
+
+pyserial

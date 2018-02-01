@@ -1,4 +1,5 @@
 # Copyright (C) 2013 Canonical Ltd.
+# Copyright (c) 2018, Joyent, Inc.
 #
 # Author: Ben Howard <ben.howard@canonical.com>
 #
@@ -21,11 +22,14 @@
 
 import base64
 import binascii
+import errno
+import fcntl
 import json
 import os
 import random
 import re
 import socket
+import time
 
 from cloudinit import log as logging
 from cloudinit import serial
@@ -339,7 +343,11 @@ class JoyentMetadataClient(object):
             binascii.crc32(body.encode('utf-8')) & 0xffffffff)
 
     def _get_value_from_frame(self, expected_request_id, frame):
-        frame_data = self.line_regex.match(frame).groupdict()
+        match = self.line_regex.match(frame)
+        if match is None:
+            raise JoyentMetadataFetchException(
+                'No regex match for frame "%s"' % frame)
+        frame_data = match.groupdict()
         if int(frame_data['length']) != len(frame_data['body']):
             raise JoyentMetadataFetchException(
                 'Incorrect frame length given ({0} != {1}).'.format(
@@ -378,9 +386,16 @@ class JoyentMetadataClient(object):
         self.fp.flush()
 
         response = bytearray()
-        response.extend(self.fp.read(1))
-        while response[-1:] != b'\n':
-            response.extend(self.fp.read(1))
+        while True:
+            try:
+                response.extend(self.fp.read(1))
+                if response[-1:] == b'\n':
+                    break
+            except OSError as exc:
+                if exc.errno == errno.EAGAIN:
+                    raise JoyentMetadataFetchException(
+                        "Timeout during read. Partial response: b'%s'" %
+                        response)
 
         if need_close:
             self.close_transport()
@@ -395,12 +410,21 @@ class JoyentMetadataClient(object):
         return value
 
     def get(self, key, default=None, strip=False):
-        result = self.request(rtype='GET', param=key)
-        if result is None:
-            return default
-        if result and strip:
-            result = result.strip()
-        return result
+        # Do a couple tries in case someone else has the serial port open
+        # before this process opened it.  This also helps in the event that
+        # the metadata server goes away in middle of a conversation.
+        for tries in [1, 2]:
+            try:
+                result = self.request(rtype='GET', param=key)
+                if result is None:
+                    return default
+                if result and strip:
+                    result = result.strip()
+                return result
+            except JoyentMetadataFetchException as exc:
+                last_exc = exc
+                pass
+        raise(last_exc)
 
     def get_json(self, key, default=None):
         result = self.get(key, default=default)
@@ -470,7 +494,24 @@ class JoyentMetadataSerialClient(JoyentMetadataClient):
     def open_transport(self):
         ser = serial.Serial(self.device, timeout=self.timeout)
         if not ser.isOpen():
-            raise SystemError("Unable to open %s" % self.device)
+            # There is some sort of a race between cloud-init and mdata-get
+            # that can cause the serial device to not open on the initial
+            # attempt.
+            for tries in range(1, 11):
+                try:
+                    ser.open()
+                    assert(ser.isOpen())
+                    break
+                except OSError as exc:
+                    # This is probably a SerialException, which is a subclass
+                    # of OSError.  SerialException is not used becasue of
+                    # existing efforts to make pyserial optional.
+                    LOG.debug("Failed to open %s on try %d: %s", self.device,
+                              tries, exc)
+                    time.sleep(0.1)
+            else:
+                raise SystemError("Unable to open %s" % self.device)
+        fcntl.lockf(ser, fcntl.LOCK_EX)
         self.fp = ser
 
     def __repr__(self):
