@@ -233,12 +233,17 @@ class DataSourceSmartOS(sources.DataSource):
                       self.md_client)
             return False
 
+        # Open once for many requests, rather than once for each request
+        self.md_client.open_transport()
+
         for ci_noun, attribute in SMARTOS_ATTRIB_MAP.items():
             smartos_noun, strip = attribute
             md[ci_noun] = self.md_client.get(smartos_noun, strip=strip)
 
         for ci_noun, smartos_noun in SMARTOS_ATTRIB_JSON.items():
             md[ci_noun] = self.md_client.get_json(smartos_noun)
+
+        self.md_client.close_transport()
 
         # @datadictionary: This key may contain a program that is written
         # to a file in the filesystem of the guest on each boot and then
@@ -320,6 +325,10 @@ class JoyentMetadataFetchException(Exception):
     pass
 
 
+class JoyentMetadataTimeoutException(JoyentMetadataFetchException):
+    pass
+
+
 class JoyentMetadataClient(object):
     """
     A client implementing v2 of the Joyent Metadata Protocol Specification.
@@ -368,6 +377,44 @@ class JoyentMetadataClient(object):
         LOG.debug('Value "%s" found.', value)
         return value
 
+    def _readline(self):
+        """
+           Reads a line a byte at a time until \n is encountered.  Returns an
+           ascii string with the trailing newline removed.
+
+           If a timeout (per-byte) is set and it expires, a
+           JoyentMetadataFetchException will be thrown.
+        """
+        response = bytearray()
+        while True:
+            try:
+                byte = self.fp.read(1)
+                if byte == b'\n':
+                    return response.decode('ascii')
+                if byte == b'':
+                    raise JoyentMetadataTimeoutException(
+                        "Partial response: '%s'" % response.decode('ascii'))
+                response.extend(byte)
+            except OSError as exc:
+                if exc.errno == errno.EAGAIN:
+                    raise JoyentMetadataTimeoutException(
+                        "Partial response: '%s'" % response.decode('ascii'))
+                raise
+
+    def _write(self, msg):
+        self.fp.write(msg.encode('ascii'))
+        self.fp.flush()
+
+    def _negotiate(self):
+        LOG.debug('Negotiating protocol V2')
+        self._write('NEGOTIATE V2\n')
+        self.fp.flush()
+        response = self._readline()
+        if response != 'V2_OK':
+            raise JoyentMetadataFetchException(
+                'Invalid response "%s" to "NEGOTIATE V2"' % response)
+        LOG.debug('Negotiation complete')
+
     def request(self, rtype, param=None):
         request_id = '{0:08x}'.format(random.randint(0, 0xffffffff))
         message_body = ' '.join((request_id, rtype,))
@@ -382,25 +429,12 @@ class JoyentMetadataClient(object):
             self.open_transport()
             need_close = True
 
-        self.fp.write(msg.encode('ascii'))
-        self.fp.flush()
+        self._write(msg)
 
-        response = bytearray()
-        while True:
-            try:
-                response.extend(self.fp.read(1))
-                if response[-1:] == b'\n':
-                    break
-            except OSError as exc:
-                if exc.errno == errno.EAGAIN:
-                    raise JoyentMetadataFetchException(
-                        "Timeout during read. Partial response: b'%s'" %
-                        response)
-
+        response = self._readline()
         if need_close:
             self.close_transport()
 
-        response = response.rstrip().decode('ascii')
         LOG.debug('Read "%s" from metadata transport.', response)
 
         if 'SUCCESS' not in response:
@@ -422,6 +456,7 @@ class JoyentMetadataClient(object):
                     result = result.strip()
                 return result
             except JoyentMetadataFetchException as exc:
+                LOG.warning('Try %d: GET "%s" failed: %s', tries, key, exc)
                 last_exc = exc
                 pass
         raise(last_exc)
@@ -474,6 +509,7 @@ class JoyentMetadataSocketClient(JoyentMetadataClient):
         sock = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
         sock.connect(self.socketpath)
         self.fp = sock.makefile('rwb')
+        self._negotiate()
 
     def exists(self):
         return os.path.exists(self.socketpath)
@@ -513,6 +549,52 @@ class JoyentMetadataSerialClient(JoyentMetadataClient):
                 raise SystemError("Unable to open %s" % self.device)
         fcntl.lockf(ser, fcntl.LOCK_EX)
         self.fp = ser
+        self._flush()
+        self._negotiate()
+
+    def bad_readline(self):
+        response = self.fp.read_until('\n').decode('ascii')
+        if response[-1:] != '\n':
+            raise JoyentMetadataTimeoutException(
+                "Partial response: b'%s'" % response)
+        return(response[0:-1])
+
+    def _flush(self):
+        LOG.debug('Flushing input')
+        # Read any pending data
+        timeout = self.fp.timeout
+        self.fp.timeout = 0.1
+        while True:
+            try:
+                self._readline()
+            except JoyentMetadataTimeoutException:
+                break
+        LOG.debug('Input empty')
+
+        # Send a newline and expect "invalid command".  Keep trying until
+        # successful.  Retry rather frequently so that the "Is the host
+        # metadata service running" appears on the console soon after someone
+        # attaches in an effort to debug.
+        if timeout > 5:
+            self.fp.timeout = 5
+        else:
+            self.fp.timeout = timeout
+        while True:
+            LOG.debug('Writing newline, expecting "invalid command"')
+            self._write('\n')
+            try:
+                response = self._readline()
+                if response == 'invalid command':
+                    break
+                if response == 'FAILURE':
+                    LOG.debug('Got "FAILURE".  Retrying.');
+                    continue
+                LOG.warning('Unexpected response "%s" during flush', response)
+            except JoyentMetadataTimeoutException:
+                LOG.warning('Timeout while initializing metadata client. ' +
+                            'Is the host metadata service running?')
+        LOG.debug('Got "invalid command".  Flush complete.')
+        self.fp.timeout = timeout
 
     def __repr__(self):
         return "%s(device=%s, timeout=%s)" % (

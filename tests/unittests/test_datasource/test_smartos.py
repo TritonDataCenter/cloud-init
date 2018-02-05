@@ -329,6 +329,7 @@ class PsuedoJoyentClient(object):
         if data is None:
             data = MOCK_RETURNS.copy()
         self.data = data
+        self._is_open = False
         return
 
     def get(self, key, default=None, strip=False):
@@ -348,6 +349,14 @@ class PsuedoJoyentClient(object):
 
     def exists(self):
         return True
+
+    def open_transport(self):
+        assert(not self._is_open)
+        self._is_open = True
+
+    def close_transport(self):
+        assert(self._is_open)
+        self._is_open = False
 
 
 class TestSmartOSDataSource(FilesystemMockingTestCase):
