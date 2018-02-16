@@ -98,7 +98,7 @@ deb:
 		{ echo "Missing devscripts dependency. Install with:"; \
 		  echo sudo apt-get install devscripts; exit 1; }
 
-	$(PYVER) ./packages/bddeb
+	$(PYVER) ./packages/bddeb --python2
 
 deb-src:
 	@which debuild || \
