@@ -19,7 +19,6 @@ from cloudinit.sources import (
     DataSourceOpenNebula as OpenNebula,
     DataSourceOpenStack as OpenStack,
     DataSourceOVF as OVF,
-    DataSourceScaleway as Scaleway,
     DataSourceSmartOS as SmartOS,
 )
 from cloudinit.sources import DataSourceNone as DSNone
@@ -50,7 +49,6 @@ DEFAULT_NETWORK = [
     NoCloud.DataSourceNoCloudNet,
     OpenStack.DataSourceOpenStack,
     OVF.DataSourceOVFNet,
-    Scaleway.DataSourceScaleway,
 ]
 
 
