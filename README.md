@@ -14,9 +14,9 @@ remote: Total 29974 (delta 252), reused 274 (delta 155), pack-reused 29536
 Receiving objects: 100% (29974/29974), 18.17 MiB | 29.40 MiB/s, done.
 Resolving deltas: 100% (21960/21960), done.
 
-$ cd cloud-init
+~ $ cd cloud-init
 
-$ git checkout joyent-bhyve
+~/cloud-init $ git checkout joyent-bhyve
 
 ```
 
@@ -25,13 +25,13 @@ $ git checkout joyent-bhyve
 ### Debian or Ubuntu with python3
 
 ```
-$ sudo apt-update
+~/cloud-init $ sudo apt update
 
-$ sudo apt install -y $(python3 ./tools/read-dependencies \
+~/cloud-init $ sudo apt install -y $(python3 ./tools/read-dependencies \
     --requirements-file requirements.txt --system-pkg-names  -d debian)
 ...
 
-$ sudo apt install -y $(python3 ./tools/read-dependencies \
+~/cloud-init $ sudo apt install -y $(python3 ./tools/read-dependencies \
     --requirements-file test-requirements.txt --system-pkg-names  -d debian)
 ...
 ```
@@ -43,7 +43,7 @@ Some of the tests try to connect to a link-local metadata service at
 that with a reject route.
 
 ```
-$ sudo route add 169.254.169.254 reject
+~/cloud-init $ sudo route add 169.254.169.254 reject
 ```
 
 ### Build on Debian or Ubuntu
@@ -52,7 +52,7 @@ This runs tests before building the package.  If tests fail, no package for you.
 Uncommitted changes also cause this to fail.
 
 ```
-$ make deb
+~/cloud-init $ make deb
 '/usr/bin/debuild
 python3 ./packages/bddeb
 Creating a temporary tarball using the 'make-tarball' helper
