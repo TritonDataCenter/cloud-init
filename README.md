@@ -13,6 +13,11 @@ remote: Compressing objects: 100% (280/280), done.
 remote: Total 29974 (delta 252), reused 274 (delta 155), pack-reused 29536
 Receiving objects: 100% (29974/29974), 18.17 MiB | 29.40 MiB/s, done.
 Resolving deltas: 100% (21960/21960), done.
+
+$ cd cloud-init
+
+$ git checkout joyent-bhyve
+
 ```
 
 ## Install dependencies
@@ -20,8 +25,6 @@ Resolving deltas: 100% (21960/21960), done.
 ### Debian or Ubuntu with python3
 
 ```
-$ cd cloud-init
-
 $ sudo apt-update
 
 $ sudo apt install -y $(python3 ./tools/read-dependencies \
