@@ -5,6 +5,12 @@ for Joyent's images.
 
 ## Get the bits
 
+On Centos 7 images, you probably are missing git.
+
+```
+~ $ sudo yum install -y git
+```
+
 ```
 ~ $ git clone git@github.com:joyent/cloud-init.git
 Cloning into 'cloud-init'...
@@ -34,6 +40,16 @@ Resolving deltas: 100% (21960/21960), done.
 ~/cloud-init $ sudo apt install -y $(python3 ./tools/read-dependencies \
     --requirements-file test-requirements.txt --system-pkg-names  -d debian)
 ...
+```
+
+### Centos with python 2.7
+
+```
+~/cloud-init $ tools/read-dependencies -i -d centos
+
+~/cloud-init $ tools/read-dependencies -i -d centos -r test-requirements.txt
+
+~/cloud-init $ sudo yum install -y rpmbuild
 ```
 
 ## Run tests and generate package
@@ -67,4 +83,19 @@ Wrote 'cloud-init_17.2-33-gd40a3dc0-1~bddeb.debian.tar.xz'
 Wrote 'cloud-init_17.2-33-gd40a3dc0-1~bddeb_all.deb'
 Linked 'cloud-init_17.2-33-gd40a3dc0-1~bddeb_all.deb' to 'cloud-init_all.deb'
 Wrote 'cloud-init_17.2-33-gd40a3dc0-1~bddeb_amd64.build'
+```
+
+### Build on Centos
+
+```
+$ make rpm
+python2 ./packages/brpm --distro=redhat
+Archived the code in
+u'/tmp/rpmbuildgqdT0H/rpmbuild/SOURCES/cloud-init-17.2-36-g52f30808.tar.gz'
+Created spec file at '/tmp/rpmbuildgqdT0H/rpmbuild/SPECS/cloud-init.spec'
+Running 'rpmbuild' in '/tmp/rpmbuildgqdT0H/rpmbuild'
+Wrote out redhat package
+'/home/mgerdts/cloud-init/cloud-init-17.2+36.g52f30808-1.el7.centos.noarch.rpm'
+Wrote out redhat package
+'/home/mgerdts/cloud-init/cloud-init-17.2+36.g52f30808-1.el7.centos.src.rpm'
 ```
