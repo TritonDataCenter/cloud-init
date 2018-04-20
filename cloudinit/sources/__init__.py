@@ -1,6 +1,7 @@
 # Copyright (C) 2012 Canonical Ltd.
 # Copyright (C) 2012 Hewlett-Packard Development Company, L.P.
 # Copyright (C) 2012 Yahoo! Inc.
+# Copyright (c) 2018 Joyent, Inc.
 #
 # Author: Scott Moser <scott.moser@canonical.com>
 # Author: Juerg Haefliger <juerg.haefliger@hp.com>
@@ -473,6 +474,18 @@ class DataSource(object):
         is_new_instance is a boolean indicating if this is a new instance.
         """
         return
+
+    def get_maintain_network(self):
+        """get_maintain_network()
+
+        Should cloud-init reconfigure networking on this run?  This method is
+        called each time cloud-init is run, except for the first run as a new
+        instance.  It is not called on the first run, as the network is
+        configured always configured on the first run.
+
+        Return True to configure the network on this run.
+        """
+        return self.metadata.get('maintain_network', False) is True
 
 
 def normalize_pubkey_data(pubkey_data):

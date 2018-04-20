@@ -639,6 +639,14 @@ class TestSmartOSDataSource(FilesystemMockingTestCase):
         self.assertEqual(dsrc.device_name_to_device('FOO'),
                          mydscfg['disk_aliases']['FOO'])
 
+    def test_sdc_maintain_network_true(self):
+        mockdata = MOCK_RETURNS.copy()
+        mockdata['sdc:maintain_network'] = 'true'
+        dsrc = self._get_ds(mockdata=mockdata)
+        ret = dsrc.get_data()
+        self.assertTrue(ret)
+        self.assertTrue(dsrc.get_maintain_network())
+
 
 class ShortReader(object):
     """Implements a 'read' interface for bytes provided.

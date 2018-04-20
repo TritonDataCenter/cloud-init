@@ -1,6 +1,7 @@
 # Copyright (C) 2012 Canonical Ltd.
 # Copyright (C) 2012, 2013 Hewlett-Packard Development Company, L.P.
 # Copyright (C) 2012 Yahoo! Inc.
+# Copyright (c) 2018, Joyent, Inc.
 #
 # This file is part of cloud-init. See LICENSE file for license information.
 
@@ -649,8 +650,10 @@ class Init(object):
             LOG.warning("Failed to rename devices: %s", e)
 
         if (self.datasource is not NULL_DATA_SOURCE and
-                not self.is_new_instance()):
-            LOG.debug("not a new instance. network config is not applied.")
+            not any([self.is_new_instance(),
+                     self.datasource.get_maintain_network()])):
+            LOG.debug("not a new instance nor apply. "
+                      "network config is not applied.")
             return
 
         LOG.info("Applying network configuration from %s bringup=%s: %s",

@@ -1,3 +1,5 @@
+# Copyright (c) 2018, Joyent, Inc.
+#
 # This file is part of cloud-init. See LICENSE file for license information.
 
 import inspect
@@ -381,3 +383,30 @@ class TestDataSource(CiTestCase):
                     get_args(grandchild.get_hostname),  # pylint: disable=W1505
                     '%s does not implement DataSource.get_hostname params'
                     % grandchild)
+
+    def test_maintain_network_unset(self):
+        """get_maintain_network returns False if maintain_network is not set"""
+        datasource = DataSourceTestSubclassNet(self.sys_cfg, self.distro,
+                                               self.paths)
+        self.assertFalse(datasource.get_maintain_network())
+
+    def test_maintain_network_false(self):
+        """get_maintain_network returns False if maintain_network is False"""
+        datasource = DataSourceTestSubclassNet(self.sys_cfg, self.distro,
+                                               self.paths)
+        datasource.metadata['maintain_network'] = False
+        self.assertFalse(datasource.get_maintain_network())
+
+    def test_maintain_network_true(self):
+        """get_maintain_network returns True if maintain_network is True"""
+        datasource = DataSourceTestSubclassNet(self.sys_cfg, self.distro,
+                                               self.paths)
+        datasource.metadata['maintain_network'] = True
+        self.assertTrue(datasource.get_maintain_network())
+
+    def test_maintain_network_invalid(self):
+        """get_maintain_network returns False if maintain_network is invalid"""
+        datasource = DataSourceTestSubclassNet(self.sys_cfg, self.distro,
+                                               self.paths)
+        datasource.metadata['maintain_network'] = 'junk'
+        self.assertFalse(datasource.get_maintain_network())

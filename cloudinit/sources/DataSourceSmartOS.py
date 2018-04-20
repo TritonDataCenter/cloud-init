@@ -52,6 +52,7 @@ SMARTOS_ATTRIB_MAP = {
     'operator-script': ('sdc:operator-script', False),
     'hostname': ('sdc:hostname', True),
     'dns_domain': ('sdc:dns_domain', True),
+    'maintain_network': ('maintain_network', True),
 }
 
 SMARTOS_ATTRIB_JSON = {
@@ -293,6 +294,8 @@ class DataSourceSmartOS(sources.DataSource):
                 'per_boot_d': os.path.join(self.paths.get_cpath("scripts"),
                                            'per-boot'),
             }
+
+        md['maintain_network'] = bool(md.get('maintain_network') != 'false')
 
         self.metadata = util.mergemanydict([md, self.metadata])
         self.userdata_raw = ud

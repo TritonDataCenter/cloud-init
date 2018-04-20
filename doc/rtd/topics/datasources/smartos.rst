@@ -58,6 +58,7 @@ SmartOS tools. These are:
  * hostname
  * enable_motd_sys_info
  * iptables_disable
+ * maintain_network
 
 Note: At this time iptables_disable and enable_motd_sys_info are read but
     are not actioned.
