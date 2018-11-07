@@ -5,7 +5,7 @@ for Joyent's images.
 
 ## Get the bits
 
-On Centos 7 images, you probably are missing git.
+On Centos 6 & 7 images, you probably are missing git.
 
 ```
 ~ $ sudo yum install -y git
@@ -42,7 +42,7 @@ Resolving deltas: 100% (21960/21960), done.
 ...
 ```
 
-### Centos with python 2.7
+### Centos with python 2.x
 
 ```
 ~/cloud-init $ tools/read-dependencies -i -d centos
@@ -98,4 +98,33 @@ Wrote out redhat package
 '/home/mgerdts/cloud-init/cloud-init-17.2+36.g52f30808-1.el7.centos.noarch.rpm'
 Wrote out redhat package
 '/home/mgerdts/cloud-init/cloud-init-17.2+36.g52f30808-1.el7.centos.src.rpm'
+```
+
+At least on CentOS 6, python-jinja2 is too old for the build to work. This is
+seen as:
+
+```
+Traceback (most recent call last):
+  File "./packages/brpm", line 201, in <module>
+    sys.exit(main())
+  File "./packages/brpm", line 162, in main
+    os.path.basename(archive_fn))
+  File "./packages/brpm", line 102, in generate_spec_contents
+    return templater.render_from_file(tmpl_fn, params=subs)
+  File "/home/mgerdts/cloud-init/cloudinit/templater.py", line 155, in render_from_file
+    return renderer(content, params)
+  File "/home/mgerdts/cloud-init/cloudinit/templater.py", line 98, in basic_render
+    return BASIC_MATCHER.sub(replacer, content)
+  File "/home/mgerdts/cloud-init/cloudinit/templater.py", line 96, in replacer
+    return str(selected_params[key])
+KeyError: u'RPM_BUILD_ROOT'
+make: *** [rpm] Error 1
+```
+
+To get past this:
+
+```
+$ sudo yum install -y pip
+$ sudo pip install --upgrade jinja2
+$ make rpm
 ```
