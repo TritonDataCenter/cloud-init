@@ -3,6 +3,8 @@
 This README contains hints to help you get started with any cloud-init hacking
 for Joyent's images.
 
+# Development
+
 ## Get the bits
 
 On Centos 6 & 7 images, you probably are missing git.
@@ -127,4 +129,31 @@ To get past this:
 $ sudo yum install -y pip
 $ sudo pip install --upgrade jinja2
 $ make rpm
+```
+
+# Installation and use
+
+A generic installation of cloud-init is not tailored to the needs of VMs hosted
+on SmartOS.  A couple tweaks are needed.
+
+## Install pyserial
+
+The cloud-init package lacks a dependency on the python serial module (aka
+pyserial).  If pyserial is not installed, errors that end as follows will be
+logged:
+
+```
+  File "DataSourceSmartOS.py", line 534, in open_transport
+    raise SystemError("Unable to open %s" % self.device)
+SystemError: Unable to open /dev/ttyS1
+```
+
+## Customize datasource list
+
+Unless customized, cloud-init will probe all data sources.  Some of those can
+take quite long to time out on link-local network queries if no one is
+answering.
+
+```
+# echo 'datasource_list: [ SmartOS ]' > /etc/cloud/cloud.cfg.d/90_smartos.cfg
 ```
